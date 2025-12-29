@@ -171,10 +171,9 @@ def get_odemeler(mukellef_unvani: str):
 
 import re
 
-
 def clean_company_name(name: str) -> str:
-    """Kullanıcının girdiği isimden 'firması, şirketi, ltd' gibi kelimeleri temizler."""
     name = name.lower()
+    # Sadece yasal takıları temizle, sektörel kelimeleri (yazılım vb.) bırak
     noise_words = ["firması", "şirketi", "limited", "ltd", "şti", "anonim", "as", "a.ş", "şirket"]
     for word in noise_words:
         name = name.replace(word, "")
@@ -182,31 +181,52 @@ def clean_company_name(name: str) -> str:
 
 
 def get_mukellef_detay(mukellef_unvani: str):
-    """Mükellefin tüm detaylarını (dilekçe için) getirir."""
+    """Mükellefin tüm detaylarını (dilekçe için) getirir.
+    Turkish character support and token matching added.
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Esnek arama için ismi temizle
-    clean_name = clean_company_name(mukellef_unvani)
+    # 1. Girişi normalize et (i-ı, ş-s gibi dönüşümler)
+    norm_search = _normalize_tr(mukellef_unvani)
+    # Gürültü kelimeleri temizle (teknoloji, yazılım, ltd vb.)
+    clean_search = clean_company_name(norm_search)
 
-    query = """
-            SELECT unvan, vergi_no, vergi_dairesi, tip, adres
-            FROM mukellefler
-            WHERE LOWER(unvan) LIKE ? \
-            """
-    cursor.execute(query, (f"%{clean_name}%",))
-    row = cursor.fetchone()
+    # 2. Kelimelere böl (Örn: ["ozkan", "yazilim"])
+    tokens = [t for t in clean_search.split() if len(t) >= 2]
+
+    # 3. Tüm mükellefleri çek ve Python tarafında eşleştir (En güvenli yol)
+    cursor.execute("SELECT id, unvan, vergi_no, vergi_dairesi, tip, adres FROM mukellefler")
+    all_rows = cursor.fetchall()
+
+    matched_row = None
+
+    for row in all_rows:
+        db_unvan_norm = _normalize_tr(row[1])
+
+        # Tam eşleşme var mı?
+        if clean_search in db_unvan_norm:
+            matched_row = row
+            break
+
+        # Token bazlı eşleşme (Kelimelerin en az yarısı tutuyorsa)
+        match_count = sum(1 for tok in tokens if tok in db_unvan_norm)
+        if tokens and match_count >= (len(tokens) / 2):
+            matched_row = row
+            break
+
     conn.close()
 
-    if row:
+    if matched_row:
         return {
-            "unvan": row[0],
-            "vergi_no": row[1],
-            "vergi_dairesi": row[2],
-            "tip": row[3],
-            "adres": row[4]  # DB'de adres sütunu olduğunu varsayıyoruz
+            "unvan": matched_row[1],
+            "vergi_no": matched_row[2],
+            "vergi_dairesi": matched_row[3],
+            "tip": matched_row[4],
+            "adres": matched_row[5]
         }
-    return "Mükellef bulunamadı."
+
+    return "Mükellef bulunamadı. Lütfen listeden kontrol edin veya unvanı değiştirin."
 def get_beyannameler(mukellef_unvani: str):
     """Bir mükellefin verilmiş olan beyannamelerini listeler."""
     conn = sqlite3.connect(DB_PATH)

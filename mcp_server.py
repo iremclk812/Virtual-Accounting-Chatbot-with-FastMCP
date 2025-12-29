@@ -3,7 +3,7 @@ from tools.accounting_tools import (
     get_banka_hesaplari,
     get_vergi_borclari,
     get_mukellefler,
-    get_odemeler, get_mukellef_detay
+    get_odemeler, get_mukellef_detay,get_beyannameler,get_sicil_kayitlari,get_tum_borclu_mukellefler
 )
 from starlette.responses import HTMLResponse
 
@@ -38,7 +38,20 @@ def mukellef_detaylari(mukellef_unvani: str) -> str:
     data = get_mukellef_detay(mukellef_unvani)
     if isinstance(data, dict):
         return f"Tam Unvan: {data['unvan']}\nVergi No: {data['vergi_no']}\nVergi Dairesi: {data['vergi_dairesi']}\nAdres: {data['adres']}"
+
     return data
+@mcp.tool()
+def sicil_kayitlari(mukellef_unvani: str) -> str:
+    """Mükellefin ticaret sicil gazetesi geçmişini (kuruluş, adres değişikliği vb.) getirir."""
+    return get_sicil_kayitlari(mukellef_unvani)
+@mcp.tool()
+def beyannameler(mukellef_unvani: str) -> str:
+    """Bir mükellefin verilmiş olan beyannamelerini listeler."""
+    return get_beyannameler(mukellef_unvani)
+@mcp.tool()
+def tum_borclu_mukellefler() -> str:
+    """Veritabanındaki tüm mükellefleri tarar ve sadece borcu olanları listeler."""
+    return get_tum_borclu_mukellefler()
 
 
 # Simple root HTML page for quick SSE/testing in a browser

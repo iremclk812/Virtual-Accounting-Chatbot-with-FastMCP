@@ -5,6 +5,9 @@ from tools.accounting_tools import (
     get_odemeler,
     get_mukellef_detay,
     clean_company_name,
+    get_beyannameler,
+    get_sicil_kayitlari,
+    get_tum_borclu_mukellefler
 )
 
 
@@ -56,4 +59,29 @@ TOOLS = {
             "mukellef_unvani": "string"
         },
     },
+    "get_beyannameler": {
+        "function": get_beyannameler,
+        "description": "Bir mükellefin verilmiş olan beyannamelerini listeler",
+        "parameters": {
+            "mukellef_unvani": "string"
+        },
+        "aliases": ["beyannameler", "beyanname listesi", "verilmiş beyannameler", "beyanname geçmişi"]
+    },
+    "get_sicil_kayitlari": {
+        "function": get_sicil_kayitlari,
+        "description": "Bir mükellefin sicil gazetesindeki kayıtlarını listeler",
+        "parameters": {
+            "mukellef_unvani": "string"
+        },
+        "aliases": ["sicil kayıtları", "sicil gazetesi", "sicil kayıt", "sicil gazete"]
+    },
+    "get_tum_borclu_mukellefler": {
+        "function": get_tum_borclu_mukellefler,
+        "description": "Tüm borçlu mükelleflerin listesini getirir",
+        "parameters": {
+
+        },
+        "aliases": ["borçlu mükellefler", "borclu mukellefler", "borçlu şirketler", "borclu sirketler"]
+    }
+
 }

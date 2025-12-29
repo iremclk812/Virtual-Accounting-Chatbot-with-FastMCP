@@ -79,7 +79,7 @@ async def process_interaction(user_input):
 
             with st.status(f"🛠️ {t_name} sorgulanıyor...", expanded=False) as status:
                 result = await execute_tool(t_name, t_args)
-                status.update(label=f"✅ {t_name} verisi alındı.", state="complete", expanded=False)
+
 
             # Tool sonucunu geçmişe ekle
             st.session_state.messages.append({

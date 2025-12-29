@@ -16,6 +16,6 @@ class MCPToolClient:
     async def list_tools(self):
         async with sse_client(self.server_url) as (read, write):
             async with ClientSession(read, write) as session:
-                await session.initialize() # <--- BURASI ÇOK KRİTİK
+                await session.initialize()
                 result = await session.list_tools()
                 return result.tools # .tools listesini döndürür

@@ -207,4 +207,73 @@ def get_mukellef_detay(mukellef_unvani: str):
             "adres": row[4]  # DB'de adres sütunu olduğunu varsayıyoruz
         }
     return "Mükellef bulunamadı."
+def get_beyannameler(mukellef_unvani: str):
+    """Bir mükellefin verilmiş olan beyannamelerini listeler."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    norm_search = _normalize_tr(mukellef_unvani)
+
+    query = """
+    SELECT b.beyanname_turu, b.donem, b.verilme_tarihi, b.tahakkuk_no, b.durum
+    FROM beyannameler b
+    JOIN mukellefler m ON m.id = b.mukellef_id
+    WHERE LOWER(m.unvan) LIKE ?
+    """
+    cursor.execute(query, (f"%{norm_search}%",))
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows: return "Beyanname kaydı bulunamadı."
+
+    result = ["Verilen Beyannameler:"]
+    for tur, donem, tarih, no, durum in rows:
+        result.append(f"- {tur} | Dönem: {donem} | Tarih: {tarih} | Tahakkuk No: {no} ({durum})")
+    return "\n".join(result)
+
+def get_sicil_kayitlari(mukellef_unvani: str):
+    """Mükellefin ticaret sicil gazetesi geçmişini (kuruluş, adres değişikliği vb.) getirir."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    norm_search = _normalize_tr(mukellef_unvani)
+
+    query = """
+    SELECT s.tarih, s.sayi, s.konu, s.aciklama
+    FROM sicil_gazetesi s
+    JOIN mukellefler m ON m.id = s.mukellef_id
+    WHERE LOWER(m.unvan) LIKE ?
+    """
+    cursor.execute(query, (f"%{norm_search}%",))
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows: return "Sicil gazetesi kaydı bulunamadı."
+
+    result = ["Ticaret Sicil Kayıtları:"]
+    for tarih, sayi, konu, aciklama in rows:
+        result.append(f"📅 {tarih} | Sayı: {sayi} | Konu: {konu}\n   Açıklama: {aciklama}")
+    return "\n".join(result)
+
+
+def get_tum_borclu_mukellefler():
+    """Veritabanındaki tüm mükellefleri tarar ve sadece borcu olanları listeler."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    query = """
+            SELECT m.unvan, v.vergi_turu, v.borc_tutari, v.donem
+            FROM vergiler v
+                     JOIN mukellefler m ON m.id = v.mukellef_id
+            WHERE v.durum = 'odenmedi' \
+            """
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows:
+        return "Şu anda borcu olan herhangi bir mükellef bulunmamaktadır."
+
+    result = ["⚠️ Borcu Bulunan Mükellefler:"]
+    for unvan, tur, borc, donem in rows:
+        result.append(f"- {unvan}: {donem} dönemi {tur} borcu {borc} TL")
+    return "\n".join(result)
 

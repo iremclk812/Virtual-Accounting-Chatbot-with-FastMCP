@@ -9,7 +9,7 @@ class MCPToolClient:
     async def run_tool(self, tool_name: str, args: dict):
         async with sse_client(self.server_url) as (read, write):
             async with ClientSession(read, write) as session:
-                await session.initialize() # <--- BURASI ÇOK KRİTİK
+                await session.initialize()
                 result = await session.call_tool(tool_name, args)
                 return result.content[0].text
 

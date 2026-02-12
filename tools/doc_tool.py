@@ -1,55 +1,59 @@
-import fitz # PDF için
 import os
-import pytesseract
-from pdf2image import convert_from_path
-import docx # .docx için
-import shutil
+import requests
 
-# Mac Homebrew yolu
-pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/bin/tesseract'
+OCR_API_URL = "http://127.0.0.1:8001/extract/file"
 
-def extract_text_from_any_file(dosya_yolu: str) -> str:
+
+def extract_text_from_docker(file_path, docker_url=OCR_API_URL):
+    """
+    Docker sunucusuna dosyayı gönderir ve metni UTF-8 olarak alır.
+    """
     try:
-        if not os.path.exists(dosya_yolu):
+        if not os.path.exists(file_path):
             return "Hata: Dosya bulunamadı."
 
-        ext = os.path.splitext(dosya_yolu)[1].lower()
-        content = ""
+        with open(file_path, "rb") as f:
+            files = {"file": (os.path.basename(file_path), f)}
+            data = {"ocr": "true", "lang": "tur"}
 
-        # --- 1. PDF İŞLEME ---
-        if ext == ".pdf":
-            doc = fitz.open(dosya_yolu)
-            content = "".join([page.get_text() for page in doc])
-            doc.close()
-            # Eğer boşsa OCR başlat
-            if not content.strip() or len(content.strip()) < 50:
-                images = convert_from_path(dosya_yolu, dpi=300)
-                content = "".join([pytesseract.image_to_string(img, lang='tur') for img in images])
+            response = requests.post(docker_url, files=files, data=data, timeout=30)
 
-        # --- 2. DOCX İŞLEME ---
-        elif ext == ".docx":
-            doc = docx.Document(dosya_yolu)
-            content = "\n".join([para.text for para in doc.paragraphs])
+            response.encoding = 'utf-8'
 
-        # --- 3. DOC İŞLEME (Legacy) ---
-        elif ext == ".doc":
-            # .doc dosyaları moderndir ama kütüphanesi farklıdır.
-            # En temiz yol 'textract' veya 'antiword' kullanmaktır.
-            # Mac'te 'textutil' komutu yerleşiktir, onu kullanalım:
-            content = os.popen(f"textutil -convert txt -stdout '{dosya_yolu}'").read()
+            response.raise_for_status()
 
-        # --- 4. TXT İŞLEME ---
-        elif ext == ".txt":
-            with open(dosya_yolu, "r", encoding="utf-8") as f:
-                content = f.read()
+            result = response.json()
+            text_content = result.get("text", "")
 
-        else:
-            return f"Desteklenmeyen dosya formatı: {ext}"
+            # Metni temizle ve döndür
+            return text_content.strip()
 
-        if not content.strip():
-            return "Dosya okundu ancak içerik boş."
-
-        return f"BELGE İÇERİĞİ ({os.path.basename(dosya_yolu)}):\n\n{content}"
-
+    except requests.exceptions.ConnectionError:
+        return "Docker OCR hatası: Sunucuya bağlanılamadı. Docker Desktop'ı kontrol edin."
     except Exception as e:
-        return f"Dosya işleme hatası: {str(e)}"
+        return f"Docker OCR hatası: {str(e)}"
+
+
+def extract_text_from_any_file(dosya_yolu: str) -> str:
+    """
+    Gelen dosyayı türüne göre işler.
+    - TXT dosyaları: Doğrudan okunur
+    - Diğer tüm dosyalar (PDF, Excel, DOCX, PNG, JPG, JPEG vs.): Docker OCR kullanılır
+    """
+    if not os.path.exists(dosya_yolu):
+        return "Hata: Dosya yolu geçersiz."
+
+    ext = os.path.splitext(dosya_yolu)[1].lower()
+
+    # TXT dosyaları için UTF-8 okuma
+    if ext == ".txt":
+        with open(dosya_yolu, "r", encoding="utf-8") as f:
+            return f.read()
+
+    # Tüm diğer dosyalar (PDF, Excel, Görsel vs.) için Docker OCR'a gönder
+    content = extract_text_from_docker(dosya_yolu)
+
+    if content:
+        return f"BELGE İÇERİĞİ ({os.path.basename(dosya_yolu)}):\n\n{content}"
+    return "Belge işlendi ancak metin bulunamadı."
+

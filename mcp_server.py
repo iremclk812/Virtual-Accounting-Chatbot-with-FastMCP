@@ -78,10 +78,11 @@ def tum_borclu_mukellefler() -> str:
 def read_file(file_path: str) -> str:
     """
     Belirtilen yoldaki dosyayı okur.
-    Desteklenen formatlar: PDF (OCR destekli), DOCX, DOC, TXT.
+    Desteklenen formatlar: PDF (OCR destekli), DOCX, DOC, TXT, PNG, JPG, JPEG.
     Belge içeriğini metin olarak döndürür.
     """
     return extract_text_from_any_file(file_path)
+
 
 
 # --- TEST VE SSE İZLEME SAYFASI ---

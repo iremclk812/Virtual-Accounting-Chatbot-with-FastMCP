@@ -1,2 +1,7 @@
 mcp
 ollama
+streamlit
+requests
+fastmcp
+starlette
+uvicorn
